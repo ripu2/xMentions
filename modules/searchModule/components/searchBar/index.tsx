@@ -10,42 +10,57 @@ import useUserSearch from '../../hooks/searchHook'
 
 function SearchBar() {
   const [searchTerm, setSearchTerm] = useState<string>('')
-  const [allowUserSearch, setAllowUserSearch] = useState<boolean>(true);
   const [searchResults, setSearchResults] = useState<UserType[]>([])
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
+
+
+  const [mentionTerm, setMentionTerm] = useState<string>('')
+  const [allowNew, setAllowNew] = useState(false);
 
   const { searchForUser } = useUserSearch();
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const deb = useCallback(debounce((val: string) => {
-    const res = searchForUser(val);
+    const res = searchForUser(`@${val}`);
     setSearchResults(res);
   }, 2000), [])
 
 
-  const userSearch = useCallback((searchValue: string) => {
-    if(allowUserSearch) {
-      deb(searchValue);
+  const mapSearchTerm = useCallback((searchChar: string) => {  
+    if(searchChar === null) {
+      setMentionTerm(mentionTerm.slice(0, -1))
+    } else {
+      setMentionTerm(mentionTerm+searchChar);
     }
-  }, [allowUserSearch, deb])
+  }, [mentionTerm])
 
 
   const onTextChange = useCallback((e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value: string = e.target.value;
-    setSearchTerm(value)
-    setAllowUserSearch(true)
-    if (value.includes('@')) {
-      userSearch(value);
+    if(e.nativeEvent?.data === '@') {
+      setAllowNew(true);
+    }  
+    if(allowNew) {
+      mapSearchTerm(e.nativeEvent?.data)
     }
-  }, [userSearch])
+    setSearchTerm(value)
+  }, [allowNew, mapSearchTerm])
 
   const onUserSelection = useCallback((selectedUser: string) => {
-    setAllowUserSearch(false);
-    if(!selectedUsers.includes(selectedUser.split(" ").join("_")))setSelectedUsers([...selectedUsers, selectedUser.split(" ").join("_")])
-    const newString = stringManipulator(searchTerm, selectedUser)
-    setSearchTerm(newString)
     setSearchResults([]);
-  }, [searchTerm, selectedUsers])
+    setMentionTerm('');
+    setAllowNew(false);
+    const stringInput = searchTerm.split(" ");
+    stringInput[stringInput.length - 1] = `@${selectedUser}`
+    setSearchTerm(stringInput.join(" "));
+  }, [searchTerm])
+
+  useEffect(() => {
+    if(mentionTerm.length) {
+      deb(mentionTerm);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mentionTerm])
 
 
   return (
